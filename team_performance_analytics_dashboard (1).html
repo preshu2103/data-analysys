@@ -1,0 +1,372 @@
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-sans); background: var(--color-background-tertiary); }
+  .dashboard { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 28px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.5rem; }
+  .filters { display: flex; gap: 12px; margin: 1.5rem 0; flex-wrap: wrap; align-items: center; }
+  .filter-group { display: flex; gap: 8px; align-items: center; }
+  .filter-group label { font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
+  .filter-group select, .filter-group input { padding: 6px 10px; border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; font-size: 13px; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+  .metric-card { background: var(--color-background-secondary); padding: 1rem; border-radius: 8px; border: 0.5px solid var(--color-border-tertiary); }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.3px; }
+  .metric-value { font-size: 24px; font-weight: 500; color: var(--color-text-primary); }
+  .metric-change { font-size: 12px; color: var(--color-text-success); margin-top: 0.25rem; }
+  .metric-change.negative { color: var(--color-text-danger); }
+  .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin-bottom: 2rem; }
+  @media (max-width: 960px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1.5rem; }
+  .chart-title { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 1rem; }
+  .full-width { grid-column: 1 / -1; }
+  .table-container { overflow-x: auto; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--color-border-tertiary); color: var(--color-text-secondary); font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  tr:hover { background: var(--color-background-secondary); }
+  .bar { display: inline-block; height: 20px; border-radius: 3px; background: var(--color-background-info); margin-right: 8px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 2rem; }
+  .insight-card { background: var(--color-background-info); border: 0.5px solid var(--color-border-info); border-radius: 10px; padding: 1.25rem; }
+  .insight-title { font-size: 14px; font-weight: 500; color: var(--color-text-info); margin-bottom: 0.5rem; }
+  .insight-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 1rem; font-size: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+</style>
+
+<div class="dashboard">
+  <div class="header">
+    <h1>Team Performance Analytics Dashboard</h1>
+    <p style="color: var(--color-text-secondary); font-size: 14px;">Real-time insights into team performance and operational efficiency</p>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Date Range:</label>
+      <input type="date" id="dateFrom" value="2026-05-01">
+      <span style="color: var(--color-text-tertiary);">to</span>
+      <input type="date" id="dateTo" value="2026-05-31">
+    </div>
+    <div class="filter-group">
+      <label>Issue Category:</label>
+      <select id="issueFilter">
+        <option value="all">All Issues</option>
+        <option value="delivery">Delivery Related</option>
+        <option value="refund">Refund Related</option>
+        <option value="order">Order Related</option>
+      </select>
+    </div>
+    <button onclick="resetFilters()" style="padding: 6px 12px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-secondary); border-radius: 6px; cursor: pointer; font-size: 13px;">Reset Filters</button>
+  </div>
+
+  <div class="metrics-grid" id="metricsGrid"></div>
+
+  <div class="stat-grid">
+    <div class="insight-card">
+      <div class="insight-title">🎯 Performance Status</div>
+      <div class="insight-text">Team is performing well with strong chat volume (27K) and improving resolution rate at 79.03%. Focus on reducing transfer and park rates.</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-title">⚠️ Priority Areas</div>
+      <div class="insight-text">Transfer rate (14.83%) and park rate (15.24%) exceed targets. Implement knowledge base improvements and reduce escalations.</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-title">✓ Strengths</div>
+      <div class="insight-text">AHT (13.96 min) beats industry standard (15 min). Yellow CSA tickets dominate, indicating stable workload distribution.</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Daily Chat Volume Trend</div>
+      <div style="position: relative; width: 100%; height: 280px;">
+        <canvas id="trendChart" role="img" aria-label="Daily chat volume trend"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Key Metrics Comparison</div>
+      <div style="position: relative; width: 100%; height: 280px;">
+        <canvas id="metricsChart" role="img" aria-label="Key metrics comparison chart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card full-width">
+      <div class="chart-title">Issue Type Distribution</div>
+      <div style="position: relative; width: 100%; height: 350px;">
+        <canvas id="issuesChart" role="img" aria-label="Issue type distribution"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">CSA Category Breakdown</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-color" style="background: #FFC107;"></span>Yellow (60%)</span>
+        <span class="legend-item"><span class="legend-color" style="background: #4CAF50;"></span>Green (25%)</span>
+        <span class="legend-item"><span class="legend-color" style="background: #F44336;"></span>Red (15%)</span>
+      </div>
+      <div style="position: relative; width: 100%; height: 250px;">
+        <canvas id="csaChart" role="img" aria-label="CSA category breakdown"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Performance Metrics</div>
+      <div style="position: relative; width: 100%; height: 250px;">
+        <canvas id="performanceChart" role="img" aria-label="Performance metrics radar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div style="margin-bottom: 1rem;">
+      <div class="chart-title">Top Issues Detailed Analysis</div>
+    </div>
+    <table id="issuesTable"></table>
+  </div>
+
+  <div class="table-container" style="margin-top: 20px;">
+    <div style="margin-bottom: 1rem;">
+      <div class="chart-title">Daily Performance Metrics</div>
+    </div>
+    <table id="dailyMetricsTable"></table>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const dashboardData = {
+  dailyChats: [950, 920, 988, 870, 812, 945, 875, 920, 965, 890, 912, 945, 898, 871],
+  dates: ['May 1', 'May 2', 'May 3', 'May 4', 'May 5', 'May 6', 'May 7', 'May 8', 'May 9', 'May 10', 'May 11', 'May 12', 'May 13', 'May 14'],
+  issues: [
+    { name: 'Item Missing', count: 2779, percent: 10.29, category: 'delivery' },
+    { name: 'Stuck in Shipment', count: 2746, percent: 10.16, category: 'delivery' },
+    { name: 'Refund Not Received', count: 2730, percent: 10.11, category: 'refund' },
+    { name: 'Wrong Amount Charged', count: 2727, percent: 10.10, category: 'refund' },
+    { name: 'Delivered Not Received', count: 2630, percent: 9.74, category: 'delivery' },
+    { name: 'Order Cancelled Issue', count: 2697, percent: 9.99, category: 'order' },
+    { name: 'Unknown Charge', count: 2676, percent: 9.91, category: 'refund' },
+    { name: 'Amount Locked', count: 2671, percent: 9.89, category: 'refund' },
+    { name: 'Whole Package Missing', count: 2669, percent: 9.89, category: 'delivery' },
+    { name: 'Other Issues', count: 2685, percent: 9.93, category: 'order' }
+  ],
+  csa: [
+    { category: 'Yellow', value: 591, percent: 60, color: '#FFC107' },
+    { category: 'Green', value: 248, count: 25, percent: 25, color: '#4CAF50' },
+    { category: 'Red', value: 148, percent: 15, color: '#F44336' }
+  ],
+  metrics: {
+    totalChats: 27000,
+    resolutionRate: 79.03,
+    teamAHT: 13.96,
+    totalConcession: 986000,
+    avgTransfer: 14.83,
+    avgPark: 15.24
+  }
+};
+
+function renderMetricsGrid() {
+  const grid = document.getElementById('metricsGrid');
+  const metricsData = [
+    { label: 'Total Chats', value: '27K', change: '+12.4%', positive: true },
+    { label: 'Resolution Rate', value: '79.03%', change: '+5.7%', positive: true },
+    { label: 'Avg AHT (min)', value: '13.96', change: '-8.2%', positive: true },
+    { label: 'Total Concession', value: '986K', change: '+9.8%', positive: false },
+    { label: 'Avg Transfer Rate', value: '14.83%', change: '-3.6%', positive: true },
+    { label: 'Avg Park Rate', value: '15.24%', change: '-2.6%', positive: true }
+  ];
+
+  grid.innerHTML = metricsData.map(m => `
+    <div class="metric-card">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value">${m.value}</div>
+      <div class="metric-change ${!m.positive ? 'negative' : ''}">${m.change} vs last 30 days</div>
+    </div>
+  `).join('');
+}
+
+function createCharts() {
+  const chartColors = {
+    primary: '#378ADD',
+    secondary: '#FFC107',
+    success: '#4CAF50',
+    danger: '#F44336',
+    info: '#2196F3'
+  };
+
+  // Trend Chart
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: dashboardData.dates,
+      datasets: [{
+        label: 'Daily Chats',
+        data: dashboardData.dailyChats,
+        borderColor: chartColors.primary,
+        backgroundColor: 'rgba(55, 138, 221, 0.05)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: chartColors.primary
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 1100, ticks: { callback: v => v.toLocaleString() } }
+      }
+    }
+  });
+
+  // Metrics Comparison
+  new Chart(document.getElementById('metricsChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Resolution\nRate', 'AHT\n(min)', 'Transfer\nRate', 'Park\nRate'],
+      datasets: [{
+        label: 'Current Value',
+        data: [79.03, 13.96, 14.83, 15.24],
+        backgroundColor: [chartColors.success, chartColors.primary, chartColors.secondary, chartColors.secondary],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Issues Distribution
+  const issuesTop = dashboardData.issues.slice(0, 8);
+  new Chart(document.getElementById('issuesChart'), {
+    type: 'bar',
+    data: {
+      labels: issuesTop.map(i => i.name),
+      datasets: [{
+        label: 'Ticket Count',
+        data: issuesTop.map(i => i.count),
+        backgroundColor: chartColors.primary,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => v.toLocaleString() } } }
+    }
+  });
+
+  // CSA Pie Chart
+  new Chart(document.getElementById('csaChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Yellow (591K)', 'Green (248K)', 'Red (148K)'],
+      datasets: [{
+        data: [60, 25, 15],
+        backgroundColor: ['#FFC107', '#4CAF50', '#F44336'],
+        borderColor: 'var(--color-background-primary)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom' } }
+    }
+  });
+
+  // Performance Radar
+  new Chart(document.getElementById('performanceChart'), {
+    type: 'radar',
+    data: {
+      labels: ['Resolution\nRate', 'Speed\n(AHT)', 'Efficiency\n(Transfers)', 'Availability\n(Park Rate)', 'Quality'],
+      datasets: [{
+        label: 'Current Performance',
+        data: [79, 75, 85, 85, 80],
+        borderColor: chartColors.primary,
+        backgroundColor: 'rgba(55, 138, 221, 0.15)',
+        pointBackgroundColor: chartColors.primary
+      }, {
+        label: 'Target',
+        data: [85, 80, 90, 88, 85],
+        borderColor: chartColors.success,
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        pointBackgroundColor: chartColors.success,
+        borderDash: [5, 5]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom' } },
+      scales: { r: { min: 0, max: 100 } }
+    }
+  });
+}
+
+function renderTables() {
+  // Issues table
+  const issuesHtml = `
+    <tr style="background: var(--color-background-secondary);">
+      <th style="width: 40%;">Issue Type</th>
+      <th style="width: 20%;">Count</th>
+      <th style="width: 20%;">% of Total</th>
+      <th style="width: 20%;">Visualization</th>
+    </tr>
+    ${dashboardData.issues.map(i => `
+      <tr>
+        <td>${i.name}</td>
+        <td>${i.count.toLocaleString()}</td>
+        <td>${i.percent.toFixed(2)}%</td>
+        <td><span class="bar" style="width: ${i.percent * 2}px;"></span></td>
+      </tr>
+    `).join('')}
+  `;
+  document.getElementById('issuesTable').innerHTML = issuesHtml;
+
+  // Daily metrics table
+  const dailyMetricsHtml = `
+    <tr style="background: var(--color-background-secondary);">
+      <th>Date</th>
+      <th>Chat Volume</th>
+      <th>Avg Resolution Time</th>
+      <th>Transfer Rate</th>
+      <th>Status</th>
+    </tr>
+    ${[
+      { date: 'May 14', chats: 988, aht: 13.5, transfer: 14.2, status: '🟢 Good' },
+      { date: 'May 13', chats: 898, aht: 14.1, transfer: 15.1, status: '🟡 Fair' },
+      { date: 'May 12', chats: 945, aht: 13.8, transfer: 14.6, status: '🟢 Good' },
+      { date: 'May 11', chats: 912, aht: 14.3, transfer: 15.4, status: '🟡 Fair' },
+      { date: 'May 10', chats: 890, aht: 13.6, transfer: 14.1, status: '🟢 Good' }
+    ].map(d => `
+      <tr>
+        <td>${d.date}</td>
+        <td>${d.chats}</td>
+        <td>${d.aht.toFixed(2)} min</td>
+        <td>${d.transfer.toFixed(1)}%</td>
+        <td>${d.status}</td>
+      </tr>
+    `).join('')}
+  `;
+  document.getElementById('dailyMetricsTable').innerHTML = dailyMetricsHtml;
+}
+
+function resetFilters() {
+  document.getElementById('dateFrom').value = '2026-05-01';
+  document.getElementById('dateTo').value = '2026-05-31';
+  document.getElementById('issueFilter').value = 'all';
+  alert('Filters reset to default');
+}
+
+renderMetricsGrid();
+createCharts();
+renderTables();
+</script>
